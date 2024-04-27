@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Importing stylesheets for Font Awesome icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zoom Clone</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Importing Socket.io and Peer.js libraries for real-time communication and peer-to-peer connections -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+
+    <!-- tensorFlow and BodyPix import for background filters -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0"></script>
+    <script>
+      const ROOM_ID = "<%= roomId %>";
+    </script>
+  </head>
+
+  <body>
+<body>
+  <p id="main-timer">Elapsed Time: <span id="elapsedTime">00:00:00</span></p>
+    <!-- Container for displaying video streams -->
+    <div id="video-grid">
+      <!-- Recording indicator -->
+      <div id="record-icon" style="display: none">
+        <div id="recording-indicator"></div>
+
+        <div id="recording-indicator-text">REC</div>
+      </div>
+        <!-- Recording indicator -->
+        <div id="record-icon" style="display: none;">
+            <div id="recording-indicator">
+            </div>
+    
+            <div id="recording-indicator-text">
+                REC
+            </div>
+            <span id="timer" style="color: white;">00:00</span> <!-- Timer element -->
+        </div>
+    </div>
+
+    <!-- Controls bar for user interactions -->
+    <div id="controls-bar">
+      <!-- Hidden container for playback -->
+      <video
+        id="playbackContainer"
+        controls
+        autoplay
+        style="display: none"
+      ></video>
+
+      <!-- Buttons for controlling recording -->
+      <button id="recordButton">
+        <i class="fa-solid fa-record-vinyl"></i>&nbsp;&nbsp;Start Recording
+      </button>
+      <button id="stopButton" style="display: none">
+        <i class="fa-solid fa-record-vinyl"></i>&nbsp;&nbsp;Stop Recording
+      </button>
+
+      <!-- Including RecordRTC library -->
+      <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+
+      <script>
+        const recordButton = document.getElementById("recordButton");
+        const stopButton = document.getElementById("stopButton");
+        const timerElement = document.getElementById('timer');
+
+
+        let recordIcon = document.getElementById("record-icon");
+
+        let recordRTC;
+        let isRecording = false;
+
+        // Event listener for the 'Start Recording' button
+        recordButton.addEventListener("click", function () {
+          if (!isRecording) {
+            // Use getDisplayMedia to capture the entire screen
+            navigator.mediaDevices
+              .getDisplayMedia({ video: true, audio: true })
+              .then(function (screenStream) {
+        let timerInterval;
+
+        function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Function to start the timer
+function startTimer() {
+    let seconds = 0;
+    timerElement.textContent = formatTime(seconds);
+    timerElement.style.display = 'inline';
+
+    timerInterval = setInterval(() => {
+        seconds++;
+        timerElement.textContent = formatTime(seconds);
+    }, 1000);
+}
+
+// Function to stop the timer
+function stopTimer() {
+    clearInterval(timerInterval);
+    timerElement.style.display = 'none';
+}
+
+
+     
+// Event listener for the 'Start Recording' button
+recordButton.addEventListener('click', function() {
+    if (!isRecording) {
+       
+        // Use getDisplayMedia to capture the entire screen
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(function(screenStream) {
+                // Optional: Add stream to video element if you want to preview the recorded screen
+                // document.querySelector('video').srcObject = screenStream;
+
+                recordRTC = RecordRTC(screenStream, {
+                  type: "video",
+                });
+                recordRTC.startRecording();
+                // Show the recording indicator
+                recordIcon.style.display = "inline";
+                recordButton.style.display = "none";
+                stopButton.style.display = "inline";
+                isRecording = true;
+                startTimer(); //Start the timer
+              })
+              .catch(function (error) {
+                console.error("Error getting display media.", error);
+              });
+          }
+        });
+
+        // Event listener for the 'Stop Recording' button
+        stopButton.addEventListener("click", function () {
+          if (isRecording) {
+            recordRTC.stopRecording(function () {
+              let videoBlob = recordRTC.getBlob();
+              let videoUrl = URL.createObjectURL(videoBlob);
+
+              // Open a new window for playback
+              let playbackWindow = window.open("");
+              playbackWindow.document.write(
+                `<video controls autoplay>
+                    <source src="${videoUrl}" type="video/webm">
+                </video>`
+              );
+              // Reset the recording state
+              isRecording = false;
+              recordIcon.style.display = "none";
+              recordButton.style.display = "inline";
+              stopButton.style.display = "none";
+            });
+          }
+        });
+            
+            // Reset the recording state
+            isRecording = false;
+            recordIcon.style.display = 'none'; 
+            recordButton.style.display = 'inline';
+            stopButton.style.display = 'none';
+            stopTimer();
+        });
+      }
+    });
+    
+    let startTime;
+    let timerInt;
+
+    function printTime() {
+        let now = new Date().getTime();
+        let elapsedTime = now - startTime;
+
+        // Calculate hours, minutes, and seconds
+        let seconds = Math.floor((elapsedTime / 1000) % 60);
+        let minutes = Math.floor((elapsedTime / (1000 * 60)) % 60);
+        let hours = Math.floor((elapsedTime / (1000 * 60 * 60)) % 24);
+
+        // Format time to have two digits
+        hours = (hours < 10) ? "0" + hours : hours;
+        minutes = (minutes < 10) ? "0" + minutes : minutes;
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+        document.getElementById("elapsedTime").textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    function start() {
+        startTime = new Date().getTime();
+        // Clear any existing timer interval to avoid multiple intervals running
+        if (timerInt) clearInterval(timerInt);
+        timerInt = setInterval(printTime, 1000); // Update time every second
+    }
+
+    // Start the timer automatically when the page loads
+    start();
+      </script>
+
+      <!-- Mute, camera, filters, participants, and leave call buttons -->
+      <button class="control-button" id="mute-button" onclick="toggleMute()">
+        <i class="fas fa-microphone" id="mute-icon"></i>
+        &nbsp;&nbsp;Mute
+      </button>
+
+      <button
+        onclick="toggleCamera()"
+        class="control-button-video"
+        id="camera-button"
+      >
+        <i class="fas fa-video" id="camera-icon"></i>
+        &nbsp;&nbsp;Stop Camera
+      </button>
+
+      <!-- <button class="control-button" id="volume-button" onclick="toggleSlider()">
+            <i class="fas fa-volume-up"></i>
+            Volume
+        </button> -->
+
+      <button
+        onclick="showFilters()"
+        class="control-button"
+        id="filters-button"
+      >
+        <i class="fas fa-wand-magic-sparkles" id="filters-icon"></i>
+        &nbsp;&nbsp;Filters
+      </button>
+
+      <div id="pop-list" class="hidden"></div>
+
+      <button
+        class="control-button"
+        id="participants-button"
+        onclick="showParticipants()"
+      >
+        <i class="fas fa-users" id="participant-icon"></i>
+        &nbsp;&nbsp;Participants
+      </button>
+      <button class="control-button" id="end-call">
+        <i class="fa-solid fa-phone-slash"></i>
+        &nbsp;&nbsp;End Call
+      </button>
+      <button
+        onclick="confirmLeave()"
+        class="control-button"
+        id="end-call-button"
+      >
+        <i class="fa-solid fa-phone rotate-icon"></i>
+        &nbsp;&nbsp;Leave Call
+      </button>
+      <button class="control-button" id="submit-image-button">
+        <i class="fa-solid fa-upload"></i>
+        &nbsp;&nbsp;Upload Image as Background
+      </button>
+      <input type="file" id="imageUpload" accept="image/*" class="hidden" />
+      <!-- Hidden slider for volume control -->
+      <div id="sliderPopup" class="hidden">
+        <input
+          type="range"
+          id="volumeSlider"
+          min="0"
+          max="100"
+          step="1"
+          value="50"
+        />
+      </div>
+    </div>
+    <!-- Hidden list for displaying participants -->
+    <div id="participant-list" class="hidden">
+      <h3>Participants in Call:</h3>
+      <ul id="participant-ul"></ul>
+    </div>
+  </body>
+  <script src="controlbar.js"></script>
+  <script src="showFilters.js"></script>
+  <script src="script.js"></script>
+</html>
